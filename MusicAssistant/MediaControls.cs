@@ -56,7 +56,7 @@ public static class MediaControls
         try
         {
             using Microsoft.Win32.RegistryKey? key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey($@"Software\Classes\AppUserModelId\{App.AppUserModelId}");
-            key?.SetValue("DisplayName", "Music Assistant");
+            key?.SetValue("DisplayName", "Lazules");
             key?.SetValue("IconUri", iconPath);
             key?.SetValue("IconBackgroundColor", "FF0E8FE0");
         }

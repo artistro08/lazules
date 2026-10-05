@@ -1,9 +1,9 @@
 <p align="center">
-    <img src="docs/icon.png" width="120" alt="Music Assistant for Windows icon">
+    <img src="docs/icon.png" width="120" alt="Lazules icon">
 </p>
 
 <h1 align="center">
-    Music Assistant for Windows
+    Lazules
 </h1>
 
 <p align="center">
@@ -17,14 +17,16 @@
 </p>
 
 <p align="center">
-    <img src="docs/screenshots/01-discover.png" width="900" alt="Music Assistant for Windows">
+    <img src="docs/screenshots/01-discover.png" width="900" alt="Lazules">
 </p>
+
+> Lazules is an independent project. It is in no way affiliated with, endorsed by, or sponsored by Music Assistant or the Open Home Foundation. "Music Assistant" is used here only to describe the server this app connects to.
 
 ## What it is
 
 Music Assistant is a music server. It pulls your music together from services like Spotify, YouTube Music and your own files, and plays it on your speakers.
 
-This app is a desktop client for it: a real Windows program, not a web page in a window. You point it at your Music Assistant server, sign in, and browse and play your music. You can also turn this PC into one of the speakers, control playback from the Windows media keys and the tray, and reach your server from anywhere when you set up remote access.
+Lazules is a desktop client for it: a real Windows program, not a web page in a window. You point it at your Music Assistant server, sign in, and browse and play your music. You can also turn this PC into one of the speakers, control playback from the Windows media keys and the tray, and reach your server from anywhere when you set up remote access.
 
 
 ## Why
@@ -44,7 +46,7 @@ The easiest way. Get it from the [Microsoft Store](https://apps.microsoft.com/de
 
 ### Manual install
 
-1. Go to the [Releases](../../releases) page and download two files: `MusicAssistant_1.2.3.0_x64.msix` and `MusicAssistant-TestSigning.cer`.
+1. Go to the [Releases](../../releases) page and download two files: `MusicAssistant_1.3.0.0_x64.msix` and `MusicAssistant-TestSigning.cer`.
 
 2. Windows only installs apps it trusts, and this one is signed with a test certificate, so you tell Windows to trust it once. Open PowerShell **as Administrator** and run:
 
@@ -52,7 +54,7 @@ The easiest way. Get it from the [Microsoft Store](https://apps.microsoft.com/de
    Import-Certificate -FilePath .\MusicAssistant-TestSigning.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
    ```
 
-3. Double-click `MusicAssistant_1.2.3.0_x64.msix` and click **Install**.
+3. Double-click `MusicAssistant_1.3.0.0_x64.msix` and click **Install**.
 
 4. Open the app, enter your server address (for example `http://192.168.1.10:8095`), and sign in.
 

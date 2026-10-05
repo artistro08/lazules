@@ -66,7 +66,7 @@ public sealed class OAuthLoopback : IDisposable
                 continue;
             }
 
-            await RespondAsync(context.Response, 200, "Signed in. You can close this tab and return to Music Assistant.");
+            await RespondAsync(context.Response, 200, "Signed in. You can close this tab and return to Lazules.");
             return code;
         }
     }
@@ -74,7 +74,7 @@ public sealed class OAuthLoopback : IDisposable
     private static async Task RespondAsync(HttpListenerResponse response, int status, string text)
     {
         byte[] body = Encoding.UTF8.GetBytes(
-            $"<!doctype html><html><head><meta charset=\"utf-8\"><title>Music Assistant</title></head>"
+            $"<!doctype html><html><head><meta charset=\"utf-8\"><title>Lazules</title></head>"
             + $"<body style=\"font-family:Segoe UI,sans-serif;display:grid;place-items:center;height:100vh;margin:0\"><p>{text}</p></body></html>");
         response.StatusCode      = status;
         response.ContentType     = "text/html; charset=utf-8";

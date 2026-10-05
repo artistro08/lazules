@@ -10,8 +10,8 @@
 # keeps referring to the plain names (Assets\Package\Square44x44Logo.png); the
 # package's resource index maps them to the right qualified file.
 #
-# Source: MusicAssistant\Assets\app-512.png, the 512px frame of
-# music-assistant-fluent.ico in the repo root.
+# Source: MusicAssistant\Assets\app-512.png, which make-icons.ps1 draws from
+# lazules.svg in the repo root. Run that one first.
 #
 # Depends on: System.Drawing (ships with Windows PowerShell / .NET)
 #   https://learn.microsoft.com/windows/apps/design/style/iconography/app-icon-construction

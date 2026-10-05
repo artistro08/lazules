@@ -1,31 +1,32 @@
 # make-icons.ps1
 #
-# Outputs: the three .ico files the app loads at runtime, in MusicAssistant\Assets.
+# Outputs: the app's icon files, in MusicAssistant\Assets.
 #   app.ico             the colored icon, for the window, the taskbar and the tray
 #   app-mono-light.ico  white silhouette, for the tray on a dark taskbar
 #   app-mono-dark.ico   black silhouette, for the tray on a light taskbar
+#   app-512.png         the colored icon at 512px, the source for make-msix-assets.ps1
 #
-# Each holds 16, 20, 24, 32, 40, 48, 64, 128 and 256px frames. The 20, 24 and 40px
+# Each .ico holds 16, 20, 24, 32, 40, 48, 64, 128 and 256px frames. The 20, 24 and 40px
 # ones are what the notification area asks for at 125%, 150% and 250% scaling; without
 # them the shell stretches the nearest frame and the tray icon looks blurry.
 #
 # Used for: the app icon and the "monochrome tray icon" setting.
 #
-# Sources: MusicAssistant\Assets\app-512.png for the colored icon, and
-# music-assistant-fluent.svg in the repo root for the two monochrome ones. Both of the
-# SVG's paths go into one figure with the even-odd fill rule, so the bars and the wave
-# knock out of the house shape and the icon reads as a single silhouette in one flat color.
+# Source: lazules.svg in the repo root. Every frame is drawn from it at its own size.
+# For the monochrome pair, all of its shapes go into one figure with the even-odd fill
+# rule, so the note knocks out of the circle and the icon reads as a single silhouette
+# in one flat color.
 #
-# Depends on: System.Drawing (ships with Windows PowerShell / .NET). The SVG only uses
-# absolute M, L, C and Z commands, which is all the parser below handles.
+# Depends on: System.Drawing (ships with Windows PowerShell / .NET). The parser below
+# handles what the SVG uses: nested <g transform="matrix(...)"> groups, <circle>, <path>
+# with absolute M, L, C and Z commands, and two-stop userSpaceOnUse linear gradients.
 #   https://learn.microsoft.com/windows/win32/menurc/icon-resource
 #
 # Usage: .\tools\make-icons.ps1
 
 Add-Type -AssemblyName System.Drawing
 
-$svgPath   = Join-Path $PSScriptRoot "..\music-assistant-fluent.svg"
-$colorPath = Join-Path $PSScriptRoot "..\MusicAssistant\Assets\app-512.png"
+$svgPath   = Join-Path $PSScriptRoot "..\lazules.svg"
 $dest      = Join-Path $PSScriptRoot "..\MusicAssistant\Assets"
 $sizes     = 16, 20, 24, 32, 40, 48, 64, 128, 256
 
@@ -79,23 +80,85 @@ function ConvertTo-GraphicsPath([string] $d) {
     return $path
 }
 
-# Collect every path in the SVG into one even-odd figure, with its group's matrix applied
-function New-SilhouettePath([string] $svg) {
+# A System.Drawing matrix from an SVG matrix(a,b,c,d,e,f) argument list
+function ConvertTo-Matrix([string] $values) {
+    $m = @($values -split '[,\s]+' | ForEach-Object { [float] $_ })
+    return New-Object System.Drawing.Drawing2D.Matrix $m[0], $m[1], $m[2], $m[3], $m[4], $m[5]
+}
+
+# A color from an SVG stop-color: rgb(r,g,b) or a named color
+function ConvertTo-Color([string] $value) {
+    if ($value -match 'rgb\((\d+),(\d+),(\d+)\)') {
+        return [System.Drawing.Color]::FromArgb([int] $Matches[1], [int] $Matches[2], [int] $Matches[3])
+    }
+    return [System.Drawing.Color]::FromName($value)
+}
+
+# Every filled shape in the SVG, in viewBox space: its outline and its gradient's two ends and colors.
+# Walks the tags in order, keeping a stack of group matrices so nested transforms compose.
+function Get-SvgShapes([string] $svg) {
+    # Gradients by id: their two end points (gradientTransform applied) and two stop colors
+    $gradients = @{}
+    foreach ($gradient in [regex]::Matches($svg, '(?s)<linearGradient id="([^"]+)" x1="([^"]+)" y1="([^"]+)" x2="([^"]+)" y2="([^"]+)"[^>]*gradientTransform="matrix\(([^)]+)\)">(.*?)</linearGradient>')) {
+        $matrix = ConvertTo-Matrix $gradient.Groups[6].Value
+        $ends   = [System.Drawing.PointF[]] @(
+            (New-Object System.Drawing.PointF ([float] $gradient.Groups[2].Value), ([float] $gradient.Groups[3].Value)),
+            (New-Object System.Drawing.PointF ([float] $gradient.Groups[4].Value), ([float] $gradient.Groups[5].Value))
+        )
+        $matrix.TransformPoints($ends)
+        $matrix.Dispose()
+
+        $colors = @([regex]::Matches($gradient.Groups[7].Value, 'stop-color:([^;"]+)') | ForEach-Object { ConvertTo-Color $_.Groups[1].Value })
+        $gradients[$gradient.Groups[1].Value] = @{ Ends = $ends; Colors = $colors }
+    }
+
+    $shapes = New-Object System.Collections.ArrayList
+    $stack  = New-Object System.Collections.Stack
+    $stack.Push((New-Object System.Drawing.Drawing2D.Matrix))
+
+    foreach ($tag in [regex]::Matches($svg, '<g transform="matrix\(([^)]+)\)">|</g>|<(circle|path)\s([^>]*)/>')) {
+        if ($tag.Value -eq '</g>') {
+            $stack.Pop().Dispose()
+            continue
+        }
+
+        # Group: its matrix applies first, then every enclosing group's
+        if ($tag.Groups[1].Success) {
+            $matrix = ConvertTo-Matrix $tag.Groups[1].Value
+            $matrix.Multiply($stack.Peek(), [System.Drawing.Drawing2D.MatrixOrder]::Append)
+            $stack.Push($matrix)
+            continue
+        }
+
+        $attributes = $tag.Groups[3].Value
+        if ($tag.Groups[2].Value -eq 'circle') {
+            $cx = [float] ([regex]::Match($attributes, 'cx="([^"]+)"').Groups[1].Value)
+            $cy = [float] ([regex]::Match($attributes, 'cy="([^"]+)"').Groups[1].Value)
+            $r  = [float] ([regex]::Match($attributes, '\sr="([^"]+)"').Groups[1].Value)
+            $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+            $path.AddEllipse($cx - $r, $cy - $r, 2 * $r, 2 * $r)
+        }
+        else {
+            $path = ConvertTo-GraphicsPath ([regex]::Match($attributes, '\bd="([^"]+)"').Groups[1].Value)
+        }
+
+        # userSpaceOnUse gradients live in the shape's own space, so they take the same matrix.
+        # ponytail: moving the two ends is exact for the SVG's uniform scales; a skewed group would need the brush transformed instead.
+        $gradient = $gradients[[regex]::Match($attributes, 'url\(#([^)]+)\)').Groups[1].Value]
+        $ends     = [System.Drawing.PointF[]] $gradient.Ends.Clone()
+        $stack.Peek().TransformPoints($ends)
+        $path.Transform($stack.Peek())
+
+        [void] $shapes.Add(@{ Path = $path; Ends = $ends; Colors = $gradient.Colors })
+    }
+    return $shapes
+}
+
+# Every shape's outline in one even-odd figure, so inner shapes knock out of outer ones
+function New-SilhouettePath($shapes) {
     $silhouette = New-Object System.Drawing.Drawing2D.GraphicsPath
     $silhouette.FillMode = [System.Drawing.Drawing2D.FillMode]::Alternate
-
-    foreach ($group in [regex]::Matches($svg, '(?s)<g transform="matrix\(([^)]+)\)">(.*?)</g>')) {
-        $m      = @($group.Groups[1].Value -split ',' | ForEach-Object { [float] $_ })
-        $matrix = New-Object System.Drawing.Drawing2D.Matrix $m[0], $m[1], $m[2], $m[3], $m[4], $m[5]
-
-        foreach ($d in [regex]::Matches($group.Groups[2].Value, '\sd="([^"]+)"')) {
-            $path = ConvertTo-GraphicsPath $d.Groups[1].Value
-            $path.Transform($matrix)
-            $silhouette.AddPath($path, $false)
-            $path.Dispose()
-        }
-        $matrix.Dispose()
-    }
+    foreach ($shape in $shapes) { $silhouette.AddPath($shape.Path, $false) }
     return $silhouette
 }
 
@@ -127,10 +190,31 @@ function Get-SilhouetteFrame($silhouette, [System.Drawing.Color] $color, [int] $
     return $canvas.Bitmap
 }
 
-# Scale the colored render down to one size
-function Get-ImageFrame($image, [int] $size) {
+# Draw the colored icon at one size, each shape filled with its gradient
+function Get-ColorFrame($shapes, [int] $size) {
     $canvas = New-Canvas $size
-    $canvas.Graphics.DrawImage($image, 0, 0, $size, $size)
+    $canvas.Graphics.ScaleTransform($size / $viewBox, $size / $viewBox)
+
+    foreach ($shape in $shapes) {
+        # SVG pads past a gradient's ends with the end colors, but GDI+ tiles. So the brush spans
+        # three times the gradient, held flat in the outer thirds, which covers every shape here.
+        $start = $shape.Ends[0]
+        $end   = $shape.Ends[1]
+        $dx    = $end.X - $start.X
+        $dy    = $end.Y - $start.Y
+        $from  = New-Object System.Drawing.PointF ($start.X - $dx), ($start.Y - $dy)
+        $to    = New-Object System.Drawing.PointF ($end.X + $dx), ($end.Y + $dy)
+
+        $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $from, $to, $shape.Colors[0], $shape.Colors[1]
+        $blend = New-Object System.Drawing.Drawing2D.ColorBlend 4
+        $blend.Colors    = [System.Drawing.Color[]] @($shape.Colors[0], $shape.Colors[0], $shape.Colors[1], $shape.Colors[1])
+        $blend.Positions = [float[]] @(0, (1 / 3), (2 / 3), 1)
+        $brush.InterpolationColors = $blend
+
+        $canvas.Graphics.FillPath($brush, $shape.Path)
+        $brush.Dispose()
+    }
+
     $canvas.Graphics.Dispose()
     return $canvas.Bitmap
 }
@@ -213,13 +297,19 @@ function Save-Ico([string] $file, $bitmaps) {
     "wrote $file at $($sizes -join ', ')px"
 }
 
-# Monochrome pair, from the SVG
-$silhouette = New-SilhouettePath (Get-Content (Resolve-Path $svgPath) -Raw)
+$shapes = Get-SvgShapes (Get-Content (Resolve-Path $svgPath) -Raw)
+
+# Monochrome pair
+$silhouette = New-SilhouettePath $shapes
 Save-Ico "app-mono-light.ico" @($sizes | ForEach-Object { Get-SilhouetteFrame $silhouette ([System.Drawing.Color]::White) $_ })
 Save-Ico "app-mono-dark.ico"  @($sizes | ForEach-Object { Get-SilhouetteFrame $silhouette ([System.Drawing.Color]::Black) $_ })
 $silhouette.Dispose()
 
-# Colored icon, from the 512px render
-$colored = [System.Drawing.Image]::FromFile((Resolve-Path $colorPath))
-Save-Ico "app.ico" @($sizes | ForEach-Object { Get-ImageFrame $colored $_ })
-$colored.Dispose()
+# Colored icon, and the 512px render the package logos are made from
+Save-Ico "app.ico" @($sizes | ForEach-Object { Get-ColorFrame $shapes $_ })
+$large = Get-ColorFrame $shapes 512
+$large.Save((Join-Path $dest "app-512.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+$large.Dispose()
+"wrote app-512.png"
+
+$shapes | ForEach-Object { $_.Path.Dispose() }

@@ -42,7 +42,7 @@ public sealed class TrayMenu
     private readonly MenuFlyout flyout = new();
 
     // Persistent items, relabeled per show.
-    private readonly MenuFlyoutItem    openItem     = Item("Open Music Assistant", "\uE8A7");
+    private readonly MenuFlyoutItem    openItem     = Item("Open Lazules", "\uE8A7");
     private readonly MenuFlyoutItem    playItem     = Item("Play", "\uE768");
     private readonly MenuFlyoutItem    nextItem     = Item("Next", "\uE893");
     private readonly MenuFlyoutItem    previousItem = Item("Previous", "\uE892");
@@ -53,7 +53,7 @@ public sealed class TrayMenu
 
     /// <summary>Builds the hidden host window and the menu, and loads its XAML tree once so the first show is reliable.</summary>
     /// <param name="owner">Handle of the main window that owns the tray icon; used to look up the icon's rectangle.</param>
-    /// <param name="open">Called when Open Music Assistant is picked.</param>
+    /// <param name="open">Called when Open Lazules is picked.</param>
     /// <param name="exit">Called when Exit is picked.</param>
     public TrayMenu(IntPtr owner, Action open, Action exit)
     {
