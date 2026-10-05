@@ -86,7 +86,7 @@ public sealed class TrayIcon : IDisposable
         data.uFlags           = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         data.uCallbackMessage = TrayMessage;
         data.hIcon            = icon;
-        data.szTip            = "Music Assistant";
+        data.szTip            = "Lazules";
         added = Shell_NotifyIcon(NIM_ADD, ref data);
 
         // NOTIFYICON_VERSION_4: WM_CONTEXTMENU / NIN_SELECT with coordinates.

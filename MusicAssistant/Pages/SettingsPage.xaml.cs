@@ -20,7 +20,7 @@ public sealed partial class SettingsPage : Page
         ServerText.Text  = App.Settings.ServerAddress ?? "(remote only)";
         VersionText.Text = info is null ? "" : $"{info.Name ?? "Music Assistant"} • server {info.ServerVersion} • schema {info.SchemaVersion}";
         UserText.Text    = user is null ? "" : $"{user.DisplayName ?? user.Username} ({user.Role})";
-        AppVersionText.Text = $"Music Assistant for Windows {App.DisplayVersion}";
+        AppVersionText.Text = $"Lazules {App.DisplayVersion}";
         ConnectionText.Text = App.Client.IsRemote ? "Currently connected remotely through the relay." : "Currently connected over your local network.";
         RemoteIdBox.Text    = App.Settings.RemoteId ?? "";
 
